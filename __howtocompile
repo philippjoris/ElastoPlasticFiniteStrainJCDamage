@@ -1,0 +1,6 @@
+When compiling the GMatElastoPlasticFiniteStrainSimo repo, do:
+clone repo to folder
+change setup.py file (delete "python version 3.7...3.11" line)
+change in python/Cartesian3d.py the bindings as done in this folder
+pip install . (install all necessary packages)
+in your environment/../include/../GMatTensor file change the includes from xtensor.xx.hpp to how it is done in the goose environment on this machine
