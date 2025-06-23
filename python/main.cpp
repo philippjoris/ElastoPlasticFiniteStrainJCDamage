@@ -105,6 +105,73 @@ auto LinearHardening(T& cls)
     cls.def("__repr__", [](const S&) { return "<GMat...Simo.Cartesian3d.LinearHardening>"; });
 }
 
+template <class S, class T>
+auto LinearHardeningDamage(T& cls)
+{
+    cls.def(
+        py::init<
+            const xt::pytensor<double, S::rank>&,
+            const xt::pytensor<double, S::rank>&,
+            const xt::pytensor<double, S::rank>&,
+            const xt::pytensor<double, S::rank>&,
+            const xt::pytensor<double, S::rank>&, // D1_in
+            const xt::pytensor<double, S::rank>&, // D2_in          
+            const xt::pytensor<double, S::rank>&, // D3_in             
+            const xt::pytensor<double, S::rank>&  // eps_dot_in
+            >(),
+        "Heterogeneous system with Johnson-Cook damage model (non-strainrate dependent).",
+        py::arg("K"),
+        py::arg("G"),
+        py::arg("tauy0"),
+        py::arg("H"),
+        py::arg("D1"),
+        py::arg("D2"),
+        py::arg("D3"),
+        py::arg("eps0_dot")
+        );
+
+    cls.def_property_readonly("shape", &S::shape, "Shape of array.");
+    cls.def_property_readonly("shape_tensor2", &S::shape_tensor2, "Array of rank 2 tensors.");
+    cls.def_property_readonly("shape_tensor4", &S::shape_tensor4, "Array of rank 4 tensors.");
+    cls.def_property_readonly("K", &S::K, "Bulk modulus.");
+    cls.def_property_readonly("G", &S::G, "Shear modulus.");
+    cls.def_property_readonly("tauy0", &S::tauy0, "Initial yield stress.");
+    cls.def_property_readonly("H", &S::H, "Hardening modulus.");
+    cls.def_property_readonly("Sig", &S::Sig, "Cauchy stress tensor.");
+    cls.def_property_readonly("C", &S::C, "Tangent tensor.");
+    cls.def_property_readonly("epsp", &S::epsp, "Plastic strain.");
+
+    // Johnson-Cook Damage specific properties
+    cls.def_property_readonly("D_damage", &S::D_damage, "Accumulated damage variable.");
+    cls.def_property_readonly("failed", &S::failed, "Flag indicating if element has failed.");
+
+    cls.def_property(
+        "F",
+        static_cast<xt::pytensor<double, S::rank + 2>& (S::*)()>(&S::F),
+        static_cast<void (S::*)(const xt::pytensor<double, S::rank + 2>&)>(&S::set_F),
+        "Deformation gradient tensor");
+
+    cls.def(
+        "set_F",
+        py::overload_cast<const xt::pytensor<double, S::rank + 2>&, bool>(
+            &S::template set_F<xt::pytensor<double, S::rank + 2>>),
+        "Overwrite deformation gradient tensor.",
+        py::arg("arg"),
+        py::arg("compute_tangent") = true);
+
+    // Modified refresh method with element_erosion argument
+    cls.def(
+        "refresh", 
+        py::overload_cast<bool, bool>(&S::refresh), 
+        "Recompute stress from strain.", 
+        py::arg("compute_tangent") = true,
+        py::arg("element_erosion") = false // Default to false as in C++
+    );
+
+    cls.def("increment", &S::increment, "Update history variables.");
+    cls.def("__repr__", [](const S&) { return "<GMat...Simo.Cartesian3d.LinearHardeningDamage>"; });
+}
+
 template <class R, class T, class M>
 void Epseq(M& mod)
 {
@@ -280,4 +347,26 @@ PYBIND11_MODULE(_GMatElastoPlasticFiniteStrainSimo, m)
         my3d::LinearHardening<SM::LinearHardening<2>>(array2d);
         my3d::LinearHardening<SM::LinearHardening<3>>(array3d);
     }
+
+    // LinearHardeningDamage
+
+    {
+
+        py::class_<SM::LinearHardeningDamage<0>, GMatTensor::Cartesian3d::Array<0ul>> array0d(
+            sm, "LinearHardeningDamage0d");
+
+        py::class_<SM::LinearHardeningDamage<1>, GMatTensor::Cartesian3d::Array<1ul>> array1d(
+            sm, "LinearHardeningDamage1d");
+
+        py::class_<SM::LinearHardeningDamage<2>, GMatTensor::Cartesian3d::Array<2ul>> array2d(
+            sm, "LinearHardeningDamage2d");
+
+        py::class_<SM::LinearHardeningDamage<3>, GMatTensor::Cartesian3d::Array<3ul>> array3d(
+            sm, "LinearHardeningDamage3d");
+
+        my3d::LinearHardeningDamage<SM::LinearHardeningDamage<0>>(array0d);
+        my3d::LinearHardeningDamage<SM::LinearHardeningDamage<1>>(array1d);
+        my3d::LinearHardeningDamage<SM::LinearHardeningDamage<2>>(array2d);
+        my3d::LinearHardeningDamage<SM::LinearHardeningDamage<3>>(array3d);
+    }    
 }
